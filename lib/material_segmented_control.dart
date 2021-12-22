@@ -54,6 +54,7 @@ class MaterialSegmentedControl<T> extends StatefulWidget {
     this.disabledColor = _kDisabledDefaultColor,
     this.unselectedColor = _kUnselectedDefaultColor,
     this.horizontalPadding = _horizontalPadding,
+    this.widths
   })  : assert(children.length >= 1),
         assert(
           selectionIndex == null ||
@@ -119,6 +120,9 @@ class MaterialSegmentedControl<T> extends StatefulWidget {
   /// Define the children to disable.
   /// Giving an empty list or null enables all children.
   final List<T>? disabledChildren;
+
+  /// Custom width of the children
+  final List<double>? widths;
 
   @override
   _SegmentedControlState<T> createState() => _SegmentedControlState<T>();
@@ -367,6 +371,7 @@ class _SegmentedControlState<T> extends State<MaterialSegmentedControl<T>>
       backgroundColors: _backgroundColors,
       borderColor: _borderColor,
       borderRadius: widget.borderRadius,
+      widths: widget.widths
     );
 
     return Material(
@@ -409,6 +414,7 @@ class _SegmentedControlRenderWidget<T> extends MultiChildRenderObjectWidget {
     required this.backgroundColors,
     required this.borderColor,
     required this.borderRadius,
+    this.widths
   }) : super(
           key: key,
           children: children,
@@ -419,6 +425,7 @@ class _SegmentedControlRenderWidget<T> extends MultiChildRenderObjectWidget {
   final List<Color?> backgroundColors;
   final Color? borderColor;
   final double borderRadius;
+  final List<double>? widths;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
@@ -429,6 +436,7 @@ class _SegmentedControlRenderWidget<T> extends MultiChildRenderObjectWidget {
       backgroundColors: backgroundColors,
       borderColor: borderColor,
       borderRadius: borderRadius,
+      widths: widths
     );
   }
 
@@ -440,6 +448,7 @@ class _SegmentedControlRenderWidget<T> extends MultiChildRenderObjectWidget {
       ..selectedIndex = selectedIndex
       ..pressedIndex = pressedIndex
       ..backgroundColors = backgroundColors
+      ..widths = widths
       ..borderColor = borderColor;
   }
 }
@@ -465,10 +474,12 @@ class _RenderSegmentedControl<T> extends RenderBox
     required List<Color?> backgroundColors,
     required Color? borderColor,
     required double borderRadius,
+    required List<double>? widths,
   })   : _textDirection = textDirection,
         _selectedIndex = selectedIndex,
         _pressedIndex = pressedIndex,
         _backgroundColors = backgroundColors,
+        _widths = widths,
         _borderColor = borderColor,
         _borderRadius = borderRadius {
     addAll(children);
@@ -512,6 +523,16 @@ class _RenderSegmentedControl<T> extends RenderBox
       return;
     }
     _backgroundColors = value;
+    markNeedsPaint();
+  }
+
+  List<double>? get widths => _widths;
+  List<double>? _widths;
+  set widths(List<double>? value) {
+    if (_widths == value) {
+      return;
+    }
+    _widths = value;
     markNeedsPaint();
   }
 
@@ -652,15 +673,26 @@ class _RenderSegmentedControl<T> extends RenderBox
 
     constraints.constrainHeight(maxHeight);
 
-    final BoxConstraints childConstraints = BoxConstraints.tightFor(
-      width: childWidth,
-      height: maxHeight,
-    );
-
     child = firstChild;
-    while (child != null) {
-      child.layout(childConstraints, parentUsesSize: true);
-      child = childAfter(child);
+    int index = 0;
+    if(widths != null) {
+      while (child != null) {
+        double width = widths![index++];
+        child.layout(BoxConstraints.tightFor(
+          width: width,
+          height: maxHeight,
+        ), parentUsesSize: true);
+        child = childAfter(child);
+      }
+    } else {
+      final BoxConstraints childConstraints = BoxConstraints.tightFor(
+        width: childWidth,
+        height: maxHeight,
+      );
+      while (child != null) {
+        child.layout(childConstraints, parentUsesSize: true);
+        child = childAfter(child);
+      }
     }
 
     switch (textDirection) {
@@ -680,7 +712,10 @@ class _RenderSegmentedControl<T> extends RenderBox
         break;
     }
 
-    size = constraints.constrain(Size(childWidth * childCount, maxHeight));
+    if(widths != null) {
+      double sumWidth = widths!.reduce((a, b) => a + b);
+      size = constraints.constrain(Size(sumWidth, maxHeight));
+    } else size = constraints.constrain(Size(childWidth * childCount, maxHeight));
   }
 
   @override
