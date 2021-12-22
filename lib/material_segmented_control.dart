@@ -656,26 +656,22 @@ class _RenderSegmentedControl<T> extends RenderBox
   @override
   void performLayout() {
     double maxHeight = _minSegmentHeight;
-
     double childWidth = constraints.minWidth / childCount;
-    for (RenderBox child in getChildrenAsList()) {
-      childWidth =
-          math.max(childWidth, child.getMaxIntrinsicWidth(double.infinity));
-    }
-    childWidth = math.min(childWidth, constraints.maxWidth / childCount);
 
-    RenderBox? child = firstChild;
-    while (child != null) {
-      final double boxHeight = child.getMaxIntrinsicHeight(childWidth);
-      maxHeight = math.max(maxHeight, boxHeight);
-      child = childAfter(child);
-    }
-
-    constraints.constrainHeight(maxHeight);
-
-    child = firstChild;
     int index = 0;
     if(widths != null) {
+      RenderBox? child = firstChild;
+      while (child != null) {
+        double width = widths![index++];
+        final double boxHeight = child.getMaxIntrinsicHeight(width);
+        maxHeight = math.max(maxHeight, boxHeight);
+        child = childAfter(child);
+      }
+
+      constraints.constrainHeight(maxHeight);
+
+      index = 0;
+      child = firstChild;
       while (child != null) {
         double width = widths![index++];
         child.layout(BoxConstraints.tightFor(
@@ -685,10 +681,27 @@ class _RenderSegmentedControl<T> extends RenderBox
         child = childAfter(child);
       }
     } else {
+      for (RenderBox child in getChildrenAsList()) {
+        childWidth =
+            math.max(childWidth, child.getMaxIntrinsicWidth(double.infinity));
+      }
+      childWidth = math.min(childWidth, constraints.maxWidth / childCount);
+
+      RenderBox? child = firstChild;
+      while (child != null) {
+        final double boxHeight = child.getMaxIntrinsicHeight(childWidth);
+        maxHeight = math.max(maxHeight, boxHeight);
+        child = childAfter(child);
+      }
+
+      constraints.constrainHeight(maxHeight);
+
       final BoxConstraints childConstraints = BoxConstraints.tightFor(
         width: childWidth,
         height: maxHeight,
       );
+
+      child = firstChild;
       while (child != null) {
         child.layout(childConstraints, parentUsesSize: true);
         child = childAfter(child);
